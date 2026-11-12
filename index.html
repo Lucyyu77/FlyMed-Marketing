@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>行銷禮品申請</title>
+<style>
+  :root { --g:#06c755; --gd:#05a647; --bg:#f4f6f8; --tx:#1f2933; --mu:#7b8794; --bd:#e4e7eb; --rd:#e5484d; --am:#f59e0b; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font-family:-apple-system,"Noto Sans TC","PingFang TC",sans-serif; background:var(--bg); color:var(--tx); padding-bottom:76px; }
+  header { background:var(--g); color:#fff; padding:14px 16px; font-weight:700; font-size:17px; position:sticky; top:0; z-index:5; display:flex; justify-content:space-between; align-items:center; }
+  header small { font-weight:400; opacity:.9; font-size:12px; }
+  main { padding:12px; max-width:640px; margin:0 auto; }
+  .card { background:#fff; border-radius:12px; padding:12px; margin-bottom:10px; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .mu { color:var(--mu); font-size:13px; }
+  .b { font-weight:700; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:99px; font-size:12px; font-weight:600; }
+  .t-待核准 { background:#fff4d6; color:#9a6700; } .t-已核准 { background:#d9f7e4; color:#05803a; }
+  .t-已駁回,.t-已取消 { background:#eee; color:#666; } .t-已駁回 { background:#fde2e2; color:#b42318; }
+  .low { color:var(--rd); font-weight:700; }
+  button { font:inherit; border:0; border-radius:10px; padding:10px 14px; background:var(--g); color:#fff; font-weight:600; cursor:pointer; }
+  button.sec { background:#fff; color:var(--tx); border:1px solid var(--bd); }
+  button.dng { background:var(--rd); }
+  button.sm { padding:6px 10px; font-size:13px; border-radius:8px; }
+  button:disabled { opacity:.5; }
+  input,select,textarea { font:inherit; width:100%; padding:10px; border:1px solid var(--bd); border-radius:10px; background:#fff; margin-top:4px; }
+  label { display:block; margin:10px 0 2px; font-size:13px; color:var(--mu); }
+  .step { display:flex; align-items:center; gap:6px; }
+  .step button { width:34px; height:34px; padding:0; font-size:18px; border-radius:50%; }
+  .step span { min-width:26px; text-align:center; font-weight:700; }
+  nav { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--bd); display:flex; z-index:6; padding-bottom:env(safe-area-inset-bottom); }
+  nav a { flex:1; text-align:center; padding:9px 2px 8px; font-size:12px; color:var(--mu); position:relative; }
+  nav a.on { color:var(--g); font-weight:700; }
+  nav a i { display:block; font-style:normal; font-size:20px; }
+  nav a em { position:absolute; top:3px; left:55%; background:var(--rd); color:#fff; font-style:normal; font-size:10px; border-radius:99px; padding:0 5px; }
+  .bar { position:fixed; left:0; right:0; bottom:58px; background:#fff; border-top:1px solid var(--bd); padding:10px 12px; z-index:5; }
+  .mask { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:20; display:flex; align-items:flex-end; justify-content:center; }
+  .sheet { background:#fff; width:100%; max-width:640px; border-radius:16px 16px 0 0; padding:16px; max-height:85vh; overflow:auto; }
+  #toast { position:fixed; top:64px; left:50%; transform:translateX(-50%); background:#323f4b; color:#fff; padding:10px 16px; border-radius:99px; z-index:30; display:none; max-width:90%; font-size:14px; }
+  .bar2 { height:8px; background:#e4e7eb; border-radius:99px; overflow:hidden; margin-top:6px; } .bar2 i { display:block; height:100%; background:var(--g); }
+  .seg { display:flex; gap:6px; margin-bottom:10px; } .seg button { flex:1; }
+  .thumb { width:52px; height:52px; object-fit:cover; border-radius:8px; background:#eee; flex:none; }
+  hr { border:0; border-top:1px solid var(--bd); margin:8px 0; }
+</style>
+</head>
+<body>
+<header><span id="ttl">行銷禮品申請</span><small id="who"></small></header>
+<main id="app"><div class="card mu">載入中…</div></main>
+<div id="toast"></div>
+<div id="modal"></div>
+<nav id="nav"></nav>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbxq-LX9Ky9aBg_456okD2MpENyDV5GI6AcPs8WnfO5vbFNQN-kJy64J_UK4G1lFl2mAiw/exec';
+const BOOT = (() => {
+  const q = new URLSearchParams(location.search);
+  const st = new URLSearchParams((q.get('liff.state') || '').replace(/^\?/, ''));
+  return { liffId: '2012558042-gg5u5QNx', tab: q.get('tab') || st.get('tab') || '', no: q.get('no') || st.get('no') || '' };
+})();
+let READY = false;
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => '$' + Number(n || 0).toLocaleString();
+let ST = { tab: 'apply', cart: {}, d: null, form: { purpose: '', needDate: '', dueDate: '' }, busy: false };
+
+/* ---------- 基礎 ---------- */
+function toast(m) { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = 'none', 2600); }
+async function call(action, payload) {
+  let resp;
+  try {
+    resp = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ idToken: liff.getIDToken(), action: action, payload: payload || {} }) });
+  } catch (e) { throw new Error('無法連線到伺服器，請檢查網路'); }
+  let r;
+  try { r = await resp.json(); } catch (e) { throw new Error('伺服器回應格式錯誤'); }
+  if (!r || !r.ok) throw new Error(r ? r.error : '無回應');
+  return r.data;
+}
+async function act(fn, okMsg) {
+  if (ST.busy) return; ST.busy = true;
+  try { const r = await fn(); if (okMsg) toast(okMsg); return r; }
+  catch (e) {
+    if (e.message === 'LOGIN') { toast('登入已過期，重新登入中…'); setTimeout(() => liff.login(), 800); }
+    else toast(e.message.replace(/^Error: /, ''));
+    throw e;
+  } finally { ST.busy = false; }
+}
+function ask(title, fields, okLabel) {
+  return new Promise(resolve => {
+    $('#modal').innerHTML = `<div class="mask"><div class="sheet"><div class="b" style="font-size:16px">${esc(title)}</div>` +
+      fields.map((f, i) => f.type === 'info' ? `<div class="mu" style="margin-top:8px">${esc(f.text)}</div>` :
+        `<label>${esc(f.label)}</label>` + (f.type === 'select'
+          ? `<select id="f${i}">${f.options.map(o => `<option value="${esc(o[0])}" ${o[0] == f.value ? 'selected' : ''}>${esc(o[1])}</option>`).join('')}</select>`
+          : `<input id="f${i}" type="${f.type || 'text'}" value="${esc(f.value || '')}" ${f.list ? 'list="dl' + i + '"' : ''} inputmode="${f.type === 'number' ? 'numeric' : 'text'}">` +
+            (f.list ? `<datalist id="dl${i}">${f.list.map(x => `<option value="${esc(x)}">`).join('')}</datalist>` : ''))).join('') +
+      `<div class="row" style="margin-top:14px"><button class="sec" id="mc" style="flex:1">取消</button><button id="mo" style="flex:1;margin-left:8px">${esc(okLabel || '確定')}</button></div></div></div>`;
+    const close = v => { $('#modal').innerHTML = ''; resolve(v); };
+    $('#mc').onclick = () => close(null);
+    $('#mo').onclick = () => close(fields.map((f, i) => f.type === 'info' ? null : $('#f' + i).value));
+  });
+}
+const confirmBox = (title, text, label) => ask(title, [{ type: 'info', text }], label).then(v => !!v);
+
+/* ---------- 啟動 ---------- */
+function showFatal(msg) {
+  $('#app').innerHTML = `<div class="card"><div class="b">啟動失敗</div><div class="mu" style="word-break:break-all;margin-top:6px">${esc(msg)}<br><br>LIFF ID：${esc(BOOT.liffId || '(未設定)')}<br>目前網址：${esc(location.href)}</div></div>`;
+}
+window.addEventListener('error', e => { if (!READY) showFatal('腳本錯誤：' + e.message); });
+window.addEventListener('unhandledrejection', e => { e.preventDefault(); if (!READY) showFatal('錯誤：' + (e.reason && e.reason.message || e.reason)); });
+async function main() {
+  const timer = setTimeout(() => showFatal('LIFF 初始化逾時（超過 10 秒沒有回應）'), 10000);
+  try {
+        if (typeof liff === 'undefined') throw new Error('LIFF SDK 載入失敗');
+    await liff.init({ liffId: BOOT.liffId });
+    clearTimeout(timer);
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    await load();
+    ST.tab = BOOT.tab || 'apply';
+    if (!tabs().some(t => t[0] === ST.tab)) ST.tab = 'apply';
+    render();
+    READY = true;
+  } catch (e) {
+    $('#app').innerHTML = `<div class="card">啟動失敗：${esc(e.message)}<br><span class="mu">請確認是在 LINE 內開啟，並已完成 LIFF 設定。</span></div>`;
+  }
+}
+async function load() { ST.d = await call('init'); }
+function role() { return ST.d.user.role; }
+function tabs() {
+  const t = [['apply', '🎁', '申請'], ['mine', '📋', '我的單']];
+  if (role() !== 'employee') t.push(['approve', '✅', '核准'], ['report', '📊', '報表']);
+  if (role() === 'admin') t.push(['stock', '📦', '庫存'], ['returns', '↩️', '歸還'], ['admin', '⚙️', '管理']);
+  return t;
+}
+function go(tab) { ST.tab = tab; render(); window.scrollTo(0, 0); }
+function render() {
+  const u = ST.d.user;
+  $('#who').textContent = u.registered ? `${u.dept} ${u.name}` : '';
+  if (!u.registered) { $('#nav').innerHTML = ''; return viewRegister(); }
+  $('#nav').innerHTML = tabs().map(t => `<a class="${ST.tab === t[0] ? 'on' : ''}" onclick="go('${t[0]}')"><i>${t[1]}</i>${t[2]}${t[0] === 'approve' && ST.d.pendingCount ? `<em>${ST.d.pendingCount}</em>` : ''}</a>`).join('');
+  ({ apply: viewApply, mine: viewMine, approve: viewApprove, report: viewReport, stock: viewStock, returns: viewReturns, admin: viewAdmin })[ST.tab]();
+}
+
+/* ---------- 註冊 ---------- */
+function viewRegister() {
+  $('#app').innerHTML = `<div class="card"><div class="b">首次使用，請完成註冊</div>
+    <label>姓名</label><input id="rn" value="${esc(ST.d.user.lineName)}">
+    <label>部門</label><input id="rd" list="dls" placeholder="例如：行銷部"><datalist id="dls">${(ST.d.depts || []).map(d => `<option value="${esc(d)}">`).join('')}</datalist>
+    <button style="width:100%;margin-top:14px" onclick="doRegister()">送出</button></div>`;
+}
+async function doRegister() {
+  await act(() => call('register', { name: $('#rn').value, dept: $('#rd').value }), '註冊完成');
+  await load(); render();
+}
+
+/* ---------- 申請 ---------- */
+function cartInfo() {
+  const lines = ST.d.items.filter(i => ST.cart[i.sku]).map(i => ({ ...i, qty: ST.cart[i.sku] }));
+  return { lines, total: lines.reduce((s, l) => s + l.qty * l.price, 0), count: lines.reduce((s, l) => s + l.qty, 0), ret: lines.some(l => l.returnable) };
+}
+function viewApply() {
+  const b = ST.d.budget, c = cartInfo();
+  const pubs = [...new Set(ST.d.items.map(x => x.publisher).filter(Boolean))];
+  if (ST.pub && pubs.indexOf(ST.pub) < 0) ST.pub = '';
+  const pct = b.monthly ? Math.min(100, Math.round(b.spent / b.monthly * 100)) : 0;
+  $('#app').innerHTML = (b.monthly ? `<div class="card"><div class="row"><span class="b">${esc(ST.d.user.dept)} 本月預算</span><span class="mu">${money(b.spent)} / ${money(b.monthly)}</span></div><div class="bar2"><i style="width:${pct}%;${pct > 90 ? 'background:var(--rd)' : ''}"></i></div></div>` : '') +
+    `<div class="row" style="margin-bottom:10px"><select style="margin:0;flex:1" onchange="ST.pub=this.value;viewApply()"><option value="">全部出版社</option>${pubs.map(x => `<option value="${esc(x)}" ${ST.pub === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>` +
+    `<label style="display:flex;align-items:center;gap:6px;margin:0;color:var(--tx);font-size:14px;white-space:nowrap"><input type="checkbox" style="width:auto;margin:0" ${ST.onlyStock ? 'checked' : ''} onchange="ST.onlyStock=this.checked;viewApply()">只顯示有庫存</label></div>` +
+    ST.d.items.filter(i => (!ST.onlyStock || i.stock > 0) && (!ST.pub || i.publisher === ST.pub)).map(i => `<div class="card"><div class="row">${i.image ? `<img class="thumb" src="${esc(i.image)}" onerror="this.style.display='none'">` : ''}<div style="flex:1"><div class="b">${esc(i.name)}${i.returnable ? ' <span class="tag" style="background:#e0ecff;color:#1d4ed8">需歸還</span>' : ''}</div>
+      <div class="mu">${i.publisher ? esc(i.publisher) + ' · ' : ''}${esc(i.category)} · ${money(i.price)}/${esc(i.unit)}</div></div>
+      <div style="text-align:center;min-width:56px">${i.stock < 1 ? '<div class="low" style="font-size:15px">缺貨</div>' : i.low ? `<div style="font-size:22px;font-weight:700;color:var(--am);line-height:1">${i.stock}</div><div style="font-size:11px;color:var(--am)">僅剩</div>` : `<div style="font-size:22px;font-weight:700;line-height:1">${i.stock}</div><div class="mu" style="font-size:11px">庫存</div>`}</div>
+      <div class="step"><button class="sec" onclick="qty('${esc(i.sku)}',-1)">−</button><span>${ST.cart[i.sku] || 0}</span><button onclick="qty('${esc(i.sku)}',1)" ${i.stock < 1 ? 'disabled' : ''}>+</button></div></div></div>`).join('') +
+    (c.count ? `<div class="card"><div class="b">申請資料</div>
+      <label>用途 / 活動名稱</label><input id="pp" value="${esc(ST.form.purpose)}" oninput="ST.form.purpose=this.value" placeholder="例如：11 月台北展會">
+      <label>需用日期</label><input id="nd" type="date" value="${esc(ST.form.needDate)}" oninput="ST.form.needDate=this.value">
+      ${c.ret ? `<label>預計歸還日（含需歸還品項）</label><input id="dd" type="date" value="${esc(ST.form.dueDate)}" oninput="ST.form.dueDate=this.value">` : ''}</div>
+      <div class="bar"><div class="row"><div><div class="b">共 ${c.count} 件</div><div class="mu">預估 ${money(c.total)}</div></div><button onclick="submitReq()">送出申請</button></div></div><div style="height:70px"></div>` : '');
+}
+function qty(sku, d) {
+  const it = ST.d.items.find(i => i.sku === sku); const n = Math.max(0, Math.min(it.stock, (ST.cart[sku] || 0) + d));
+  if (n) ST.cart[sku] = n; else delete ST.cart[sku];
+  const y = window.scrollY; viewApply(); window.scrollTo(0, y);
+}
+async function submitReq() {
+  const c = cartInfo(), f = ST.form;
+  if (!f.purpose.trim()) return toast('請填寫用途');
+  if (!f.needDate) return toast('請選擇需用日期');
+  if (c.ret && !f.dueDate) return toast('請填寫預計歸還日');
+  const r = await act(() => call('submit', { lines: c.lines.map(l => ({ sku: l.sku, qty: l.qty })), purpose: f.purpose, needDate: f.needDate, dueDate: f.dueDate }));
+  ST.cart = {}; ST.form = { purpose: '', needDate: '', dueDate: '' };
+  toast('已送出 ' + r.reqNo + '，等待核准'); await load(); go('mine');
+}
+
+/* ---------- 我的申請 ---------- */
+function reqCard(g, extra) {
+  return `<div class="card"><div class="row"><span class="b">${esc(g.reqNo)}</span><span class="tag t-${esc(g.status)}">${esc(g.status)}</span></div>
+    <div class="mu">${esc(g.time)}${g.name ? ' · ' + esc(g.dept) + ' ' + esc(g.name) : ''}</div>
+    ${g.lines.map(l => `<div class="row" style="margin-top:4px"><span>${esc(l.name)}${l.publisher ? ' <span class="mu">（' + esc(l.publisher) + '）</span>' : ''} ×${l.qty}</span><span class="mu">${l.returnable && g.status === '已核准' ? '已還 ' + l.returned + '/' + l.qty : money(l.qty * l.price)}</span></div>`).join('')}
+    <hr><div class="mu">用途：${esc(g.purpose)}　需用：${esc(g.needDate)}${g.due ? '　歸還：' + esc(g.due) : ''}</div>
+    ${g.note ? `<div class="mu">備註：${esc(g.note)}${g.handler ? '（' + esc(g.handler) + '）' : ''}</div>` : ''}${extra || ''}</div>`;
+}
+function viewMine() {
+  $('#app').innerHTML = ST.d.mine.length ? ST.d.mine.map(g => reqCard(g, g.status === '待核准' ? `<button class="sec sm" style="margin-top:8px" onclick="cancelReq('${esc(g.reqNo)}')">取消申請</button>` : '')).join('') : '<div class="card mu">尚無申請紀錄</div>';
+}
+async function cancelReq(no) {
+  if (!await confirmBox('取消申請', '確定要取消 ' + no + ' ？', '取消申請')) return;
+  await act(() => call('cancel', { reqNo: no }), '已取消'); await load(); render();
+}
+
+/* ---------- 核准 ---------- */
+async function viewApprove() {
+  $('#app').innerHTML = '<div class="card mu">載入中…</div>';
+  const list = await act(() => call('pending'));
+  ST.d.pendingCount = list.length; render0Nav();
+  $('#app').innerHTML = list.length ? list.map(g => {
+    const bad = g.lines.some(l => l.qty > l.stock);
+    const over = g.budget.monthly > 0 && g.budget.spent + g.total > g.budget.monthly;
+    return reqCard(g, `<div class="mu" style="margin-top:4px">${g.lines.map(l => esc(l.name) + ' 庫存 ' + l.stock).join('；')}</div>
+      <div class="mu">本單 ${money(g.total)}${g.budget.monthly ? '　部門本月 ' + money(g.budget.spent) + '/' + money(g.budget.monthly) : ''}</div>
+      ${bad ? '<div class="low">⚠ 庫存不足</div>' : ''}${over ? '<div class="low">⚠ 將超出部門預算</div>' : ''}
+      <div class="row" style="margin-top:8px"><button class="dng" style="flex:1" onclick="decide('${esc(g.reqNo)}','reject')">駁回</button><button style="flex:1;margin-left:8px" onclick="decide('${esc(g.reqNo)}','approve')" ${bad ? 'disabled' : ''}>核准</button></div>`);
+  }).join('') : '<div class="card mu">目前沒有待核准的申請 🎉</div>';
+  if (BOOT.no) { const el = [...document.querySelectorAll('.card .b')].find(e => e.textContent === BOOT.no); if (el) el.scrollIntoView({ block: 'center' }); BOOT.no = ''; }
+}
+function render0Nav() { const n = document.querySelector('nav a em'); if (n && !ST.d.pendingCount) n.remove(); }
+async function decide(no, decision, force) {
+  const v = await ask(decision === 'approve' ? '核准 ' + no : '駁回 ' + no, [{ label: decision === 'approve' ? '備註（選填）' : '駁回原因', value: '' }], decision === 'approve' ? '確認核准' : '確認駁回');
+  if (!v) return;
+  try { await act(() => call('decide', { reqNo: no, decision, note: v[0], force }), decision === 'approve' ? '已核准並扣庫存' : '已駁回'); }
+  catch (e) {
+    if (/^OVER_BUDGET:/.test(e.message) && role() === 'admin') {
+      if (await confirmBox('超出預算', e.message.replace('OVER_BUDGET:', '') + '\n仍要核准？', '仍要核准')) {
+        await act(() => call('decide', { reqNo: no, decision, note: v[0], force: true }), '已核准並扣庫存');
+      } else return;
+    } else return;
+  }
+  await load(); viewApprove();
+}
+
+/* ---------- 庫存 ---------- */
+async function viewStock() {
+  const items = await act(() => call('inventory'));
+  $('#app').innerHTML = `<div class="seg"><button onclick="editItem()">＋ 新增品項</button><button class="sec" onclick="showTx()">異動紀錄</button></div>` +
+    items.map(i => `<div class="card" style="${i.active ? '' : 'opacity:.55'}"><div class="row"><div style="display:flex;gap:10px;align-items:center;flex:1">${i.image ? `<img class="thumb" src="${esc(i.image)}" onerror="this.style.display='none'">` : ''}<div><span class="b">${esc(i.name)}</span> <span class="mu">${esc(i.sku)}</span></div></div>
+      <span class="${i.stock <= i.safety ? 'low' : 'b'}" style="font-size:20px">${i.stock}</span></div>
+      <div class="mu">${i.publisher ? esc(i.publisher) + ' · ' : ''}${esc(i.category)} · ${money(i.price)}/${esc(i.unit)} · 安全庫存 ${i.safety}${i.returnable ? ' · 需歸還' : ''}${i.active ? '' : ' · 已停用'}</div>
+      <div class="row" style="margin-top:8px;gap:6px"><button class="sm" style="flex:1" onclick="stockIn('${esc(i.sku)}','${esc(i.name)}')">進貨</button><button class="sm sec" style="flex:1" onclick="adjust('${esc(i.sku)}','${esc(i.name)}',${i.stock})">盤點</button><button class="sm sec" style="flex:1" onclick='editItem(${esc(JSON.stringify(i))})'>編輯</button><button class="sm sec" onclick="showTx('${esc(i.sku)}')">紀錄</button></div></div>`).join('');
+  ST.inv = items;
+}
+async function stockIn(sku, name) {
+  const v = await ask('進貨：' + name, [{ label: '進貨數量', type: 'number' }, { label: '新單價（選填，留空不變）', type: 'number' }, { label: '備註（廠商 / 單號）' }], '入庫');
+  if (!v) return;
+  await act(() => call('stockIn', { sku, qty: v[0], unitCost: v[1], note: v[2] }), '已入庫'); viewStock();
+}
+async function adjust(sku, name, cur) {
+  const v = await ask('盤點：' + name, [{ type: 'info', text: '帳面庫存 ' + cur }, { label: '實際盤點數量', type: 'number' }, { label: '備註（差異原因）' }], '調整');
+  if (!v) return;
+  const r = await act(() => call('adjust', { sku, actual: v[1], note: v[2] }));
+  toast('已調整（差異 ' + (r.diff > 0 ? '+' : '') + r.diff + '）'); viewStock();
+}
+async function editItem(i) {
+  i = i || { sku: '', name: '', publisher: '', image: '', category: '', unit: '個', price: 0, safety: 0, returnable: false, active: true };
+  const pubs = [...new Set((ST.inv || []).map(x => x.publisher).filter(Boolean))];
+  const isNew = !i.sku;
+  const v = await ask(isNew ? '新增品項' : '編輯品項', [
+    { type: 'info', text: isNew ? '編號：儲存時自動產生' : '編號：' + i.sku },
+    { label: '出版社（可直接輸入新的，或從清單選）', value: i.publisher, list: pubs }, { label: '品名', value: i.name }, { label: '類別', value: i.category },
+    { label: '單位', value: i.unit }, { label: '單價', type: 'number', value: i.price }, { label: '安全庫存', type: 'number', value: i.safety },
+    { label: '需歸還（借用品）', type: 'select', value: i.returnable ? '1' : '0', options: [['0', '否'], ['1', '是']] },
+    { label: '狀態', type: 'select', value: i.active ? '1' : '0', options: [['1', '啟用'], ['0', '停用']] },
+    { label: '圖片網址（選填，https:// 開頭）', value: i.image }], '儲存');
+  if (!v) return;
+  await act(() => call('upsertItem', { sku: isNew ? '' : i.sku, publisher: v[1], name: v[2], category: v[3], unit: v[4], price: v[5], safety: v[6], returnable: v[7] === '1', active: v[8] === '1', image: v[9] }), isNew ? '已新增' : '已儲存'); viewStock();
+}
+async function showTx(sku) {
+  const rows = await act(() => call('txLog', { sku }));
+  $('#modal').innerHTML = `<div class="mask" onclick="if(event.target===this)this.parentNode.innerHTML=''"><div class="sheet"><div class="b" style="font-size:16px">異動紀錄（最近 100 筆）</div>` +
+    (rows.map(r => `<div style="padding:8px 0;border-bottom:1px solid var(--bd)"><div class="row"><span class="b">${esc(r.type)} ${esc(r.name)}</span><span class="${r.delta < 0 ? 'low' : 'b'}">${r.delta > 0 ? '+' : ''}${r.delta}</span></div><div class="mu">${r.publisher ? esc(r.publisher) + ' · ' : ''}${esc(r.time)} · 餘 ${r.after} · ${esc(r.by)} ${esc(r.ref)} ${esc(r.note)}</div></div>`).join('') || '<div class="mu">無紀錄</div>') +
+    `<button class="sec" style="width:100%;margin-top:12px" onclick="$('#modal').innerHTML=''">關閉</button></div></div>`;
+}
+
+/* ---------- 歸還 ---------- */
+async function viewReturns() {
+  const rows = await act(() => call('outstanding'));
+  $('#app').innerHTML = rows.length ? rows.map(r => `<div class="card"><div class="row"><span class="b">${esc(r.name)}</span><span class="${r.overdue ? 'low' : 'mu'}">${r.overdue ? '已逾期 ' : ''}${esc(r.due)}</span></div>
+    <div class="mu">${esc(r.who)} · ${esc(r.reqNo)} · 尚未歸還 ${r.qty - r.returned}/${r.qty}</div>
+    <button class="sm" style="margin-top:8px" onclick="giveBack('${esc(r.reqNo)}','${esc(r.sku)}',${r.qty - r.returned})">登記歸還</button></div>`).join('') : '<div class="card mu">沒有待歸還的品項</div>';
+}
+async function giveBack(no, sku, left) {
+  const v = await ask('登記歸還', [{ label: '歸還數量（最多 ' + left + '）', type: 'number', value: left }], '確認');
+  if (!v) return;
+  await act(() => call('giveBack', { reqNo: no, sku, qty: v[0] }), '已歸還並回補庫存'); viewReturns();
+}
+
+/* ---------- 報表 ---------- */
+async function viewReport(ym) {
+  ym = ym || ST.ym || new Date().toISOString().slice(0, 7); ST.ym = ym;
+  const r = await act(() => call('report', { ym }));
+  const tot = r.byDept.reduce((s, d) => s + d.amount, 0), qtyT = r.byItem.reduce((s, d) => s + d.qty, 0);
+  $('#app').innerHTML = `<div class="card"><label style="margin:0">月份</label><input type="month" value="${esc(ym)}" onchange="viewReport(this.value)"></div>
+    <div class="card"><div class="row"><div><div class="mu">核准領用金額</div><div class="b" style="font-size:22px">${money(tot)}</div></div><div style="text-align:right"><div class="mu">領用件數</div><div class="b" style="font-size:22px">${qtyT}</div></div></div>
+    ${r.stockIn !== undefined ? `<hr><div class="mu">本月進貨 ${r.stockIn} 件　盤點調整 ${r.adjust > 0 ? '+' : ''}${r.adjust} 件</div>` : ''}</div>
+    <div class="card"><div class="b">各部門</div>${r.byDept.map(d => `<div class="row" style="margin-top:6px"><span>${esc(d.dept)}</span><span>${money(d.amount)}${d.budget ? ' <span class="mu">/ ' + money(d.budget) + '</span>' : ''}</span></div>`).join('') || '<div class="mu">無資料</div>'}</div>
+    <div class="card"><div class="b">各品項</div>${r.byItem.map(d => `<div class="row" style="margin-top:6px"><span>${esc(d.name)}</span><span>${d.qty} 件 <span class="mu">${money(d.amount)}</span></span></div>`).join('') || '<div class="mu">無資料</div>'}</div>
+    <div class="card"><div class="b">各出版社</div>${(r.byPublisher || []).map(d => `<div class="row" style="margin-top:6px"><span>${esc(d.publisher)}</span><span>${d.qty} 件 <span class="mu">${money(d.amount)}</span></span></div>`).join('') || '<div class="mu">無資料</div>'}</div>
+    ${r.low ? `<div class="card"><div class="b">低庫存品項</div>${r.low.map(d => `<div class="row" style="margin-top:6px"><span>${esc(d.name)}</span><span class="low">${d.stock} ${esc(d.unit)} <span class="mu">/ 安全 ${d.safety}</span></span></div>`).join('') || '<div class="mu">目前皆充足 👍</div>'}</div>` : ''}`;
+}
+
+/* ---------- 管理 ---------- */
+async function viewAdmin() {
+  const r = await act(() => call('users'));
+  const rl = { employee: '員工', approver: '核准人', admin: '管理員' };
+  $('#app').innerHTML = `<div class="card"><div class="row"><span class="b">部門月預算</span><button class="sm" onclick="editBudget()">＋ 新增 / 修改</button></div>
+    ${r.budgets.map(b => `<div class="row" style="margin-top:6px"><span>${esc(b.dept)}</span><span>${money(b.monthly)}</span></div>`).join('') || '<div class="mu">尚未設定</div>'}</div>
+    <div class="card"><div class="b">使用者與角色</div><div class="mu">核准人的部門填「*」代表可審核所有部門</div>
+    ${r.users.map(u => `<div class="row" style="margin-top:8px"><div><div class="b">${esc(u.name)}</div><div class="mu">${esc(u.dept)} · ${rl[u.role]}</div></div><button class="sm sec" onclick='editUser(${esc(JSON.stringify(u))})'>編輯</button></div>`).join('')}</div>`;
+}
+async function editBudget() {
+  const v = await ask('部門月預算', [{ label: '部門', list: [] }, { label: '月預算（0 代表不限）', type: 'number' }], '儲存');
+  if (!v) return; await act(() => call('setBudget', { dept: v[0], monthly: v[1] }), '已儲存'); viewAdmin();
+}
+async function editUser(u) {
+  const v = await ask('編輯 ' + u.name, [{ label: '姓名', value: u.name }, { label: '部門', value: u.dept },
+    { label: '角色', type: 'select', value: u.role, options: [['employee', '員工'], ['approver', '核准人'], ['admin', '管理員']] }], '儲存');
+  if (!v) return; await act(() => call('setUser', { id: u.id, name: v[0], dept: v[1], role: v[2] }), '已更新'); viewAdmin();
+}
+
+main();
+</script>
+</body>
+</html>
